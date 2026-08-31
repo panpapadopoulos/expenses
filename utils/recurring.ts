@@ -6,14 +6,15 @@ function toISO(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-// All monthly occurrence dates for this template that are due by `today`,
-// capped at `occurrences` total if the plan has a fixed end.
+// All occurrence dates for this template that are due by `today`, stepping
+// monthly or yearly, capped at `occurrences` total if the plan has a fixed end.
 function dueDates(template: RecurringExpense, today: Date): string[] {
   const [sy, sm, sd] = template.startDate.split('-').map(Number);
   const dates: string[] = [];
-  const maxIterations = template.occurrences ?? 240; // safety cap for an ongoing plan: 20 years
+  const stepMonths = template.frequency === 'yearly' ? 12 : 1;
+  const maxIterations = template.occurrences ?? (template.frequency === 'yearly' ? 50 : 240); // safety cap for an ongoing plan: 50 years
   for (let i = 0; i < maxIterations; i++) {
-    const monthDate = new Date(sy, sm - 1 + i, 1);
+    const monthDate = new Date(sy, sm - 1 + i * stepMonths, 1);
     const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
     const occurrence = new Date(monthDate.getFullYear(), monthDate.getMonth(), Math.min(sd, daysInMonth));
     if (occurrence > today) break;

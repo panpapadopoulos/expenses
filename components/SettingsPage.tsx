@@ -252,7 +252,7 @@ export default function SettingsPage({
                   <div className="flex-1 min-w-0">
                     <p className={`font-bold truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{r.merchant}</p>
                     <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {formatCurrency(r.amount)}/mo &middot; {categoryName(r.categoryId)} &middot; since {formatDate(r.startDate)}
+                      {formatCurrency(r.amount)}/{r.frequency === 'yearly' ? 'yr' : 'mo'} &middot; {categoryName(r.categoryId)} &middot; since {formatDate(r.startDate)}
                     </p>
                   </div>
                   <span className={`text-xs font-black shrink-0 px-2.5 py-1 rounded-lg ${r.active ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600') : (isDarkMode ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500')}`}>

@@ -21,6 +21,7 @@ export default function ExpenseForm({ categories, accounts, isDarkMode, editingE
   const [accountId, setAccountId] = useState(editingExpense?.accountId || accounts[0]?.id || '');
   const [notes, setNotes] = useState(editingExpense?.notes || '');
   const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<'monthly' | 'yearly'>('monthly');
   const [endType, setEndType] = useState<'never' | 'count'>('never');
   const [occurrences, setOccurrences] = useState('4');
   const [error, setError] = useState('');
@@ -52,7 +53,7 @@ export default function ExpenseForm({ categories, accounts, isDarkMode, editingE
         categoryId,
         accountId,
         notes: notes.trim() || undefined,
-        frequency: 'monthly',
+        frequency,
         startDate: date,
         occurrences: endType === 'count' ? parsedOccurrences : undefined,
         active: true,
@@ -75,6 +76,7 @@ export default function ExpenseForm({ categories, accounts, isDarkMode, editingE
       setNotes('');
       setDate(todayISO());
       setIsRecurring(false);
+      setFrequency('monthly');
       setEndType('never');
       setOccurrences('4');
     }
@@ -165,15 +167,47 @@ export default function ExpenseForm({ categories, accounts, isDarkMode, editingE
             />
             <span className={`flex items-center gap-2 font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               <Repeat size={15} />
-              This repeats monthly
+              This is a recurring expense
             </span>
           </label>
           <p className={`text-xs font-medium mt-1.5 ml-7 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-            e.g. a Spotify subscription, or tuition split into installments
+            e.g. a monthly Spotify subscription, an annual Claude subscription, or tuition split into installments
           </p>
 
           {isRecurring && (
             <div className="mt-4 ml-7 space-y-3">
+              <div className="flex items-center gap-2 border p-1 rounded-xl w-fit border-transparent">
+                <button
+                  type="button"
+                  onClick={() => setFrequency('monthly')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-colors ${
+                    frequency === 'monthly'
+                      ? isDarkMode
+                        ? 'bg-white text-slate-900'
+                        : 'bg-slate-900 text-white'
+                      : isDarkMode
+                      ? 'bg-slate-700 text-slate-300'
+                      : 'bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFrequency('yearly')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-colors ${
+                    frequency === 'yearly'
+                      ? isDarkMode
+                        ? 'bg-white text-slate-900'
+                        : 'bg-slate-900 text-white'
+                      : isDarkMode
+                      ? 'bg-slate-700 text-slate-300'
+                      : 'bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  Yearly
+                </button>
+              </div>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -211,7 +245,7 @@ export default function ExpenseForm({ categories, accounts, isDarkMode, editingE
                 )}
               </div>
               <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                First payment logged on the date above; future ones appear automatically once their month arrives. Manage or cancel anytime from Settings.
+                First payment logged on the date above; future ones appear automatically once due. Manage or cancel anytime from Settings.
               </p>
             </div>
           )}

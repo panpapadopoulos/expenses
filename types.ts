@@ -16,7 +16,7 @@ export interface RecurringExpense {
   categoryId: string;
   accountId: string;
   notes?: string;
-  frequency: 'monthly';
+  frequency: 'monthly' | 'yearly';
   startDate: string; // ISO date of the first occurrence
   occurrences?: number; // undefined = ongoing indefinitely; number = ends after N payments
   active: boolean; // false once cancelled or all occurrences have been generated
