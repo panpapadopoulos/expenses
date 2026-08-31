@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Menu, X, PlusCircle } from 'lucide-react';
 import { AppData, Expense, RecurringExpense, Tab } from './types';
 import { fetchData, saveData } from './services/dataService';
+import { fetchSubtrackPayments } from './services/subtrackService';
 import { uid } from './utils/format';
 import { generateDueExpenses } from './utils/recurring';
+import { applySubtrackPayments } from './utils/subtrackSync';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import Logo from './components/Logo';
@@ -24,9 +26,11 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const DEFAULT_ACCOUNTS = [
-  { id: uid(), name: 'Cash', type: 'Cash' },
-  { id: uid(), name: 'Primary Card', type: 'Credit Card' },
+  { id: uid(), name: 'Cash', type: 'Cash', balance: 0 },
+  { id: uid(), name: 'Primary Card', type: 'Credit Card', balance: 0 },
 ];
+
+const EMPTY_SUBTRACK_SYNC = { targetAccountId: null, syncedPaymentIds: [] };
 
 const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
   dashboard: { title: 'Dashboard', subtitle: 'Your spending at a glance' },
@@ -39,7 +43,13 @@ const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const [data, setData] = useState<AppData>({ expenses: [], categories: [], accounts: [], recurringExpenses: [] });
+  const [data, setData] = useState<AppData>({
+    expenses: [],
+    categories: [],
+    accounts: [],
+    recurringExpenses: [],
+    subtrackSync: EMPTY_SUBTRACK_SYNC,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     try {
@@ -55,12 +65,22 @@ export default function App() {
   useEffect(() => {
     (async () => {
       const loaded = await fetchData();
-      const normalized: AppData = { ...loaded, recurringExpenses: loaded.recurringExpenses || [] };
+      const normalized: AppData = {
+        ...loaded,
+        accounts: (loaded.accounts || []).map((a) => ({ balance: 0, ...a })),
+        recurringExpenses: loaded.recurringExpenses || [],
+        subtrackSync: loaded.subtrackSync || EMPTY_SUBTRACK_SYNC,
+      };
+
+      let next: AppData;
       if (normalized.categories.length === 0 && normalized.accounts.length === 0 && normalized.expenses.length === 0) {
-        setData({ expenses: [], categories: DEFAULT_CATEGORIES, accounts: DEFAULT_ACCOUNTS, recurringExpenses: [] });
+        next = { expenses: [], categories: DEFAULT_CATEGORIES, accounts: DEFAULT_ACCOUNTS, recurringExpenses: [], subtrackSync: EMPTY_SUBTRACK_SYNC };
       } else {
-        setData(generateDueExpenses(normalized));
+        next = generateDueExpenses(normalized);
       }
+
+      const payments = await fetchSubtrackPayments();
+      setData(applySubtrackPayments(next, payments));
       setIsLoading(false);
     })();
   }, []);
@@ -118,8 +138,27 @@ export default function App() {
     setData((d) => ({ ...d, recurringExpenses: d.recurringExpenses.filter((r) => r.id !== id) }));
   }
 
+  function editRecurringExpense(updated: RecurringExpense) {
+    setData((d) => ({ ...d, recurringExpenses: d.recurringExpenses.map((r) => (r.id === updated.id ? updated : r)) }));
+  }
+
+  function setSubtrackTarget(accountId: string | null) {
+    setData((d) => ({ ...d, subtrackSync: { ...d.subtrackSync, targetAccountId: accountId } }));
+  }
+
+  async function syncSubtrackNow() {
+    const payments = await fetchSubtrackPayments();
+    setData((d) => applySubtrackPayments(d, payments));
+  }
+
   function clearAll() {
-    setData({ expenses: [], categories: DEFAULT_CATEGORIES, accounts: DEFAULT_ACCOUNTS, recurringExpenses: [] });
+    setData({
+      expenses: [],
+      categories: DEFAULT_CATEGORIES,
+      accounts: DEFAULT_ACCOUNTS,
+      recurringExpenses: [],
+      subtrackSync: EMPTY_SUBTRACK_SYNC,
+    });
   }
 
   if (isLoading) {
@@ -245,6 +284,9 @@ export default function App() {
             onClearAll={clearAll}
             onCancelRecurring={cancelRecurringExpense}
             onDeleteRecurring={deleteRecurringExpense}
+            onEditRecurring={editRecurringExpense}
+            onSetSubtrackTarget={setSubtrackTarget}
+            onSyncSubtrackNow={syncSubtrackNow}
           />
         )}
       </main>

@@ -7,7 +7,13 @@ import { AppData } from '../types';
 
 const API_URL = '/api/data';
 
-export const EMPTY_DATA: AppData = { expenses: [], categories: [], accounts: [], recurringExpenses: [] };
+export const EMPTY_DATA: AppData = {
+  expenses: [],
+  categories: [],
+  accounts: [],
+  recurringExpenses: [],
+  subtrackSync: { targetAccountId: null, syncedPaymentIds: [] },
+};
 
 export async function fetchData(): Promise<AppData> {
   try {

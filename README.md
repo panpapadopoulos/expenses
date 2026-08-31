@@ -53,6 +53,17 @@ Each expense has: date, merchant/description, amount, category, payment method/a
 and optional notes. Categories and accounts are freely editable — add, rename (with a
 color, for categories), or delete them from the **Categories** and **Accounts** pages.
 
+- **Recurring expenses**: from the Add Expense page, mark an expense as repeating monthly,
+  either ongoing (e.g. a subscription) or ending after a fixed number of payments (e.g. a
+  4-installment tuition plan). Only payments that have actually come due are generated —
+  nothing is forecasted. Manage, edit (affects future payments only), cancel, or delete
+  plans from **Settings → Recurring Expenses**.
+- **Account balances**: each account has a manually-set balance you update yourself from
+  the **Accounts** page — the app never recalculates it from your expense history.
+- **SubTrack sync**: optionally, on every app load, any new payments recorded in SubTrack
+  are added to an account balance of your choice. Configure this in **Settings → SubTrack
+  Sync**; see the deployment section below for the one-time Cloudflare setup it needs.
+
 ## Deployment
 
 Everything below is a **one-time manual setup**, mirroring exactly how SubTrack is wired
@@ -104,7 +115,25 @@ updates.
    is already on this Cloudflare account (it is, since SubTrack uses it), Cloudflare
    creates the required DNS record automatically.
 
-### 3. Verify
+### 3. (Optional) Connect SubTrack payments
+
+This lets Expenses read SubTrack's payment records (read-only — the worker code never
+writes to this namespace) and add new payments to an account balance automatically.
+
+1. Open the `subtrack-auth` Worker → **Bindings** tab, and note which KV namespace is
+   bound there (this is where SubTrack's payment data actually lives).
+2. Go to your `expenses-auth` Worker → **Bindings** tab → **Add binding** → **KV
+   Namespace**. Variable name **must be** `SUBTRACK_DATA` (matches `env.SUBTRACK_DATA` in
+   the worker code), and select that **same** KV namespace from the dropdown.
+3. In the Expenses app, go to **Settings → SubTrack Sync** and choose which account should
+   receive synced payments. From then on, every time you open Expenses it checks for new
+   SubTrack payments and adds them to that account's balance — safe to check repeatedly,
+   already-synced payments are never double-counted.
+
+Skip this section entirely if you don't want the two apps connected — Expenses works fully
+without it, just with manually-updated account balances.
+
+### 4. Verify
 
 Visit `https://expenses.panagiotispapadopoulos.com`, enter the password you set, and
 confirm the app loads and you can add/edit/delete an expense (check the Worker's KV

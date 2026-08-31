@@ -104,6 +104,21 @@ async function handleAPI(request, env, url) {
             }
         }
     }
+
+    // Read-only: SubTrack's KV namespace, bound separately below. This
+    // route never writes to it, only reads the payments list.
+    if (url.pathname === '/api/subtrack-payments' && request.method === 'GET') {
+        if (!env.SUBTRACK_DATA) {
+            return new Response(JSON.stringify({ payments: [] }), { headers: { 'Content-Type': 'application/json' } });
+        }
+        const subtrackData = await env.SUBTRACK_DATA.get('user_data', 'json');
+        const payments = (subtrackData && subtrackData.payments) || [];
+        return new Response(
+            JSON.stringify({ payments: payments.map(p => ({ id: p.id, date: p.date, amount: p.amount })) }),
+            { headers: { 'Content-Type': 'application/json' } }
+        );
+    }
+
     return new Response('Not found', { status: 404 });
 }
 

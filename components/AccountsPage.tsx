@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Pencil, Trash2, Wallet, Check, X } from 'lucide-react';
 import { Account, Expense } from '../types';
-import { uid } from '../utils/format';
+import { uid, formatCurrency } from '../utils/format';
 import ConfirmDialog from './ConfirmDialog';
 
 const TYPES = ['Credit Card', 'Debit Card', 'Bank Account', 'Cash', 'Other'];
@@ -16,9 +16,12 @@ interface Props {
 export default function AccountsPage({ accounts, expenses, isDarkMode, onChange }: Props) {
   const [name, setName] = useState('');
   const [type, setType] = useState(TYPES[0]);
+  const [startingBalance, setStartingBalance] = useState('0');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingType, setEditingType] = useState('');
+  const [editingBalanceId, setEditingBalanceId] = useState<string | null>(null);
+  const [editingBalance, setEditingBalance] = useState('');
   const [deleting, setDeleting] = useState<Account | null>(null);
 
   const usageCount = (id: string) => expenses.filter((e) => e.accountId === id).length;
@@ -26,8 +29,9 @@ export default function AccountsPage({ accounts, expenses, isDarkMode, onChange 
   function addAccount(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    onChange([...accounts, { id: uid(), name: name.trim(), type }]);
+    onChange([...accounts, { id: uid(), name: name.trim(), type, balance: parseFloat(startingBalance) || 0 }]);
     setName('');
+    setStartingBalance('0');
   }
 
   function startEdit(a: Account) {
@@ -40,6 +44,18 @@ export default function AccountsPage({ accounts, expenses, isDarkMode, onChange 
     if (!editingName.trim()) return;
     onChange(accounts.map((a) => (a.id === editingId ? { ...a, name: editingName.trim(), type: editingType } : a)));
     setEditingId(null);
+  }
+
+  function startEditBalance(a: Account) {
+    setEditingBalanceId(a.id);
+    setEditingBalance(String(a.balance));
+  }
+
+  function saveBalance() {
+    const parsed = parseFloat(editingBalance);
+    if (isNaN(parsed)) return;
+    onChange(accounts.map((a) => (a.id === editingBalanceId ? { ...a, balance: parsed } : a)));
+    setEditingBalanceId(null);
   }
 
   const cardClass = `p-5 md:p-6 rounded-2xl border transition-colors ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`;
@@ -70,6 +86,14 @@ export default function AccountsPage({ accounts, expenses, isDarkMode, onChange 
               </option>
             ))}
           </select>
+          <input
+            type="number"
+            step="0.01"
+            placeholder="Starting balance"
+            value={startingBalance}
+            onChange={(e) => setStartingBalance(e.target.value)}
+            className={`${inputClass} w-40`}
+          />
           <button
             type="submit"
             className={`flex items-center gap-2 px-5 py-3 rounded-xl font-black text-sm shadow-lg transition-all ${
@@ -121,11 +145,38 @@ export default function AccountsPage({ accounts, expenses, isDarkMode, onChange 
                   <>
                     <div className="flex-1 min-w-0">
                       <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{a.name}</p>
-                      <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{a.type}</p>
+                      <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                        {a.type} &middot; {usageCount(a.id)} expense{usageCount(a.id) === 1 ? '' : 's'}
+                      </p>
                     </div>
-                    <span className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {usageCount(a.id)} expense{usageCount(a.id) === 1 ? '' : 's'}
-                    </span>
+                    {editingBalanceId === a.id ? (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editingBalance}
+                          onChange={(e) => setEditingBalance(e.target.value)}
+                          className={`${inputClass} w-28 py-2`}
+                          autoFocus
+                        />
+                        <button onClick={saveBalance} className="p-2 rounded-lg text-emerald-500 hover:bg-emerald-500/10">
+                          <Check size={16} />
+                        </button>
+                        <button onClick={() => setEditingBalanceId(null)} className={`p-2 rounded-lg ${isDarkMode ? 'text-slate-400 hover:bg-white/10' : 'text-slate-500 hover:bg-slate-100'}`}>
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startEditBalance(a)}
+                        title="Click to update balance"
+                        className={`text-sm font-black shrink-0 px-3 py-1.5 rounded-lg transition-colors ${
+                          isDarkMode ? 'text-white hover:bg-white/10' : 'text-slate-900 hover:bg-slate-100'
+                        }`}
+                      >
+                        {formatCurrency(a.balance)}
+                      </button>
+                    )}
                     <button onClick={() => startEdit(a)} className={`p-2 rounded-lg ${isDarkMode ? 'text-slate-400 hover:bg-white/10' : 'text-slate-500 hover:bg-slate-100'}`}>
                       <Pencil size={15} />
                     </button>

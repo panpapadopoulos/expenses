@@ -1,10 +1,18 @@
 import React, { useMemo } from 'react';
-import { BarChart3, Calendar, CalendarDays, Receipt, TrendingUp } from 'lucide-react';
+import { Calendar, CalendarDays, Receipt, TrendingUp, Wallet, History } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
 import { AppData } from '../types';
 import StatCard from './StatCard';
 import { formatCurrency, formatDate, monthLabel } from '../utils/format';
-import { spendingThisMonth, spendingThisYear, averageMonthlySpending, monthlyTrend, spendingByCategory } from '../utils/calculations';
+import {
+  spendingThisMonth,
+  spendingThisYear,
+  allTimeSpending,
+  averageMonthlySpending,
+  monthlyTrend,
+  spendingByCategory,
+  spendingByYear,
+} from '../utils/calculations';
 
 interface Props {
   data: AppData;
@@ -14,10 +22,13 @@ interface Props {
 export default function Dashboard({ data, isDarkMode }: Props) {
   const { expenses, categories, accounts } = data;
 
+  const allTime = useMemo(() => allTimeSpending(expenses), [expenses]);
   const thisMonth = useMemo(() => spendingThisMonth(expenses), [expenses]);
   const thisYear = useMemo(() => spendingThisYear(expenses), [expenses]);
   const avgMonthly = useMemo(() => averageMonthlySpending(expenses), [expenses]);
+  const totalBalance = useMemo(() => accounts.reduce((sum, a) => sum + a.balance, 0), [accounts]);
   const trend = useMemo(() => monthlyTrend(expenses, 6), [expenses]);
+  const byYear = useMemo(() => spendingByYear(expenses), [expenses]);
   const byCategory = useMemo(() => spendingByCategory(expenses, categories), [expenses, categories]);
 
   const recent = useMemo(
@@ -26,6 +37,7 @@ export default function Dashboard({ data, isDarkMode }: Props) {
   );
 
   const trendData = trend.map((p) => ({ name: monthLabel(p.key), total: Number(p.total.toFixed(2)) }));
+  const yearData = byYear.map((p) => ({ name: p.year, total: Number(p.total.toFixed(2)) }));
 
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name || 'Unknown';
   const categoryOf = (id: string) => categories.find((c) => c.id === id);
@@ -35,12 +47,13 @@ export default function Dashboard({ data, isDarkMode }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
+        <StatCard label="All-Time" value={formatCurrency(allTime)} icon={History} isDarkMode={isDarkMode} accent="#06b6d4" />
         <StatCard label="This Month" value={formatCurrency(thisMonth)} icon={Calendar} isDarkMode={isDarkMode} accent="#10b981" />
         <StatCard label="This Year" value={formatCurrency(thisYear)} icon={CalendarDays} isDarkMode={isDarkMode} accent="#3b82f6" />
         <StatCard label="Avg / Month" value={formatCurrency(avgMonthly)} icon={TrendingUp} isDarkMode={isDarkMode} accent="#f59e0b" />
+        <StatCard label="Total Balance" value={formatCurrency(totalBalance)} icon={Wallet} isDarkMode={isDarkMode} accent="#ec4899" />
         <StatCard label="Transactions" value={String(expenses.length)} icon={Receipt} isDarkMode={isDarkMode} accent="#8b5cf6" />
-        <StatCard label="Categories" value={String(categories.length)} icon={BarChart3} isDarkMode={isDarkMode} accent="#ec4899" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
@@ -117,6 +130,39 @@ export default function Dashboard({ data, isDarkMode }: Props) {
             </>
           )}
         </div>
+      </div>
+
+      <div
+        className={`p-5 md:p-6 rounded-2xl border transition-colors ${
+          isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'
+        }`}
+      >
+        <h3 className={`text-sm font-black uppercase tracking-widest mb-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+          Spending by Year
+        </h3>
+        {yearData.length === 0 ? (
+          <p className={`text-sm font-medium py-10 text-center ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+            No expenses yet.
+          </p>
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={yearData}>
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+              <XAxis dataKey="name" stroke={textColor} fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke={textColor} fontSize={12} tickLine={false} axisLine={false} width={56} tickFormatter={(v) => `$${v}`} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: isDarkMode ? '#0f172a' : '#fff',
+                  border: `1px solid ${gridColor}`,
+                  borderRadius: 12,
+                  fontSize: 12,
+                }}
+                formatter={(value: number) => formatCurrency(value)}
+              />
+              <Bar dataKey="total" fill="#06b6d4" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       <div

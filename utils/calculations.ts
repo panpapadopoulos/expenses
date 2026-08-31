@@ -21,6 +21,26 @@ export function spendingThisYear(expenses: Expense[], now = new Date()): number 
   return sum(expenses.filter((e) => isSameYear(e.date, now)));
 }
 
+export function allTimeSpending(expenses: Expense[]): number {
+  return sum(expenses);
+}
+
+export interface YearTotal {
+  year: string;
+  total: number;
+}
+
+export function spendingByYear(expenses: Expense[]): YearTotal[] {
+  const totals = new Map<string, number>();
+  for (const e of expenses) {
+    const year = e.date.slice(0, 4);
+    totals.set(year, (totals.get(year) || 0) + e.amount);
+  }
+  return Array.from(totals.entries())
+    .map(([year, total]) => ({ year, total }))
+    .sort((a, b) => a.year.localeCompare(b.year));
+}
+
 export function averageMonthlySpending(expenses: Expense[]): number {
   if (expenses.length === 0) return 0;
   const byMonth = new Map<string, number>();

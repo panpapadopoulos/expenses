@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Sun, Moon, Download, Upload, LogOut, AlertTriangle, Repeat, X, Trash2 } from 'lucide-react';
-import { AppData, Expense } from '../types';
+import { Sun, Moon, Download, Upload, LogOut, AlertTriangle, Repeat, X, Trash2, Pencil, Check, RefreshCw } from 'lucide-react';
+import { AppData, Expense, RecurringExpense } from '../types';
 import { uid, formatCurrency, formatDate } from '../utils/format';
 import ConfirmDialog from './ConfirmDialog';
 
@@ -12,6 +12,9 @@ interface Props {
   onClearAll: () => void;
   onCancelRecurring: (id: string) => void;
   onDeleteRecurring: (id: string) => void;
+  onEditRecurring: (template: RecurringExpense) => void;
+  onSetSubtrackTarget: (accountId: string | null) => void;
+  onSyncSubtrackNow: () => Promise<void>;
 }
 
 function toCSV(data: AppData): string {
@@ -55,16 +58,54 @@ export default function SettingsPage({
   onClearAll,
   onCancelRecurring,
   onDeleteRecurring,
+  onEditRecurring,
+  onSetSubtrackTarget,
+  onSyncSubtrackNow,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMessage, setImportMessage] = useState('');
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [deletingRecurringId, setDeletingRecurringId] = useState<string | null>(null);
+  const [editingRecurringId, setEditingRecurringId] = useState<string | null>(null);
+  const [editMerchant, setEditMerchant] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState('');
+  const [editAccountId, setEditAccountId] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
 
   const categoryName = (id: string) => data.categories.find((c) => c.id === id)?.name || 'Uncategorized';
   const generatedCount = (recurringId: string) => data.expenses.filter((e) => e.recurringId === recurringId).length;
 
+  function startEditRecurring(r: RecurringExpense) {
+    setEditingRecurringId(r.id);
+    setEditMerchant(r.merchant);
+    setEditAmount(String(r.amount));
+    setEditCategoryId(r.categoryId);
+    setEditAccountId(r.accountId);
+  }
+
+  function saveEditRecurring(r: RecurringExpense) {
+    const parsedAmount = parseFloat(editAmount);
+    if (!editMerchant.trim() || isNaN(parsedAmount) || parsedAmount <= 0) return;
+    onEditRecurring({ ...r, merchant: editMerchant.trim(), amount: parsedAmount, categoryId: editCategoryId, accountId: editAccountId });
+    setEditingRecurringId(null);
+  }
+
+  async function handleSyncNow() {
+    setSyncing(true);
+    setSyncMessage('');
+    await onSyncSubtrackNow();
+    setSyncing(false);
+    setSyncMessage('Synced.');
+  }
+
   const cardClass = `p-5 md:p-6 rounded-2xl border transition-colors ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`;
+  const inputClass = `w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-bold text-sm transition-colors ${
+    isDarkMode
+      ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:ring-white/5 focus:border-slate-600'
+      : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-slate-900/5 focus:border-slate-400 light-select'
+  }`;
 
   function handleExport() {
     const blob = new Blob([toCSV(data)], { type: 'text/csv' });
@@ -149,6 +190,57 @@ export default function SettingsPage({
           <div className="space-y-2">
             {data.recurringExpenses.map((r) => {
               const count = generatedCount(r.id);
+
+              if (editingRecurringId === r.id) {
+                return (
+                  <div key={r.id} className={`p-3 rounded-xl space-y-2 ${isDarkMode ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+                    <input value={editMerchant} onChange={(e) => setEditMerchant(e.target.value)} className={inputClass} placeholder="Merchant" autoFocus />
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editAmount}
+                        onChange={(e) => setEditAmount(e.target.value)}
+                        className={`${inputClass} w-28`}
+                      />
+                      <select value={editCategoryId} onChange={(e) => setEditCategoryId(e.target.value)} className={`${inputClass} flex-1`}>
+                        {data.categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select value={editAccountId} onChange={(e) => setEditAccountId(e.target.value)} className={`${inputClass} flex-1`}>
+                        {data.accounts.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Only future payments use the new amount &mdash; {count} already-logged payment{count === 1 ? '' : 's'} stay unchanged.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => saveEditRecurring(r)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs bg-emerald-500 text-white hover:bg-emerald-600"
+                      >
+                        <Check size={13} />
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingRecurringId(null)}
+                        className={`px-3 py-1.5 rounded-lg font-bold text-xs ${isDarkMode ? 'bg-slate-700 text-slate-200' : 'bg-slate-200 text-slate-700'}`}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={r.id}
@@ -166,6 +258,13 @@ export default function SettingsPage({
                   <span className={`text-xs font-black shrink-0 px-2.5 py-1 rounded-lg ${r.active ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600') : (isDarkMode ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500')}`}>
                     {r.occurrences ? `${count} of ${r.occurrences}` : r.active ? 'Ongoing' : `${count} logged`}
                   </span>
+                  <button
+                    onClick={() => startEditRecurring(r)}
+                    title="Edit (affects future payments only)"
+                    className={`p-2 rounded-lg ${isDarkMode ? 'text-slate-400 hover:bg-white/10' : 'text-slate-500 hover:bg-slate-200'}`}
+                  >
+                    <Pencil size={15} />
+                  </button>
                   {r.active && (
                     <button
                       onClick={() => onCancelRecurring(r.id)}
@@ -187,6 +286,43 @@ export default function SettingsPage({
             })}
           </div>
         )}
+      </div>
+
+      <div className={cardClass}>
+        <h3 className={`text-sm font-black uppercase tracking-widest mb-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+          SubTrack Sync
+        </h3>
+        <p className={`text-xs font-medium mb-4 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+          Every time you open Expenses, any new payments recorded in SubTrack are added to the account below. Choose which account receives them, or turn it off.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={data.subtrackSync.targetAccountId || ''}
+            onChange={(e) => onSetSubtrackTarget(e.target.value || null)}
+            className={`${inputClass} flex-1 min-w-[180px] py-3`}
+          >
+            <option value="">Off &mdash; don't sync</option>
+            {data.accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleSyncNow}
+            disabled={syncing || !data.subtrackSync.targetAccountId}
+            className={`flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-colors disabled:opacity-40 ${
+              isDarkMode ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-slate-50 text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+            Sync now
+          </button>
+        </div>
+        {syncMessage && !syncing && <p className="text-xs font-bold text-emerald-500 mt-2">{syncMessage}</p>}
+        <p className={`text-xs font-medium mt-3 ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>
+          {data.subtrackSync.syncedPaymentIds.length} payment{data.subtrackSync.syncedPaymentIds.length === 1 ? '' : 's'} synced so far.
+        </p>
       </div>
 
       <div className={`${cardClass} border-red-500/30`}>

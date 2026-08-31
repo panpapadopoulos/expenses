@@ -32,6 +32,12 @@ export interface Account {
   id: string;
   name: string;
   type: string;
+  balance: number; // manually set by the user; the app never recalculates this from expenses
+}
+
+export interface SubtrackSync {
+  targetAccountId: string | null; // which account receives synced SubTrack payments
+  syncedPaymentIds: string[]; // SubTrack payment ids already applied, so re-syncing is idempotent
 }
 
 export interface AppData {
@@ -39,6 +45,7 @@ export interface AppData {
   categories: Category[];
   accounts: Account[];
   recurringExpenses: RecurringExpense[];
+  subtrackSync: SubtrackSync;
 }
 
 export type SortField = 'date' | 'amount' | 'merchant' | 'category';
