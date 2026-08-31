@@ -1,0 +1,29 @@
+/* Expenses - Additional Styles */
+/* Tailwind is loaded from CDN; this file is for overrides Tailwind utilities can't reach. */
+
+select {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
+select option {
+  background-color: #1e293b;
+  color: #f8fafc;
+  padding: 8px;
+}
+
+.light-select,
+.light-select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.4);
+  border-radius: 999px;
+}
