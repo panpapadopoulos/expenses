@@ -118,3 +118,6 @@ namespace in the dashboard to confirm data is actually being persisted).
 - **Worker changes** (`cloudflare-worker.js`): there's no CI for the Worker (matching
   SubTrack) — after editing it, re-paste the file into the Cloudflare dashboard's Worker
   editor and Deploy.
+
+
+Panagiotis Papadopoulos
