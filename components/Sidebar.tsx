@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Receipt, PlusCircle, Tags, Wallet, Settings, LogOut, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Receipt, PlusCircle, Tags, Wallet, Repeat, Settings, LogOut, Sun, Moon } from 'lucide-react';
 import Logo from './Logo';
 import { Tab } from '../types';
 
@@ -16,6 +16,7 @@ const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'add', label: 'Add Expense', icon: PlusCircle },
   { id: 'categories', label: 'Categories', icon: Tags },
   { id: 'accounts', label: 'Accounts', icon: Wallet },
+  { id: 'recurring', label: 'Recurring', icon: Repeat },
 ];
 
 export default function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode }: Props) {

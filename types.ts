@@ -20,6 +20,7 @@ export interface RecurringExpense {
   startDate: string; // ISO date of the first occurrence
   occurrences?: number; // undefined = ongoing indefinitely; number = ends after N payments
   active: boolean; // false once cancelled or all occurrences have been generated
+  showMonthlyEquivalent?: boolean; // yearly plans only: display amount/12 alongside the real yearly charge
 }
 
 export interface Category {
@@ -50,4 +51,4 @@ export interface AppData {
 
 export type SortField = 'date' | 'amount' | 'merchant' | 'category';
 export type SortOrder = 'asc' | 'desc';
-export type Tab = 'dashboard' | 'expenses' | 'add' | 'categories' | 'accounts' | 'settings';
+export type Tab = 'dashboard' | 'expenses' | 'add' | 'categories' | 'accounts' | 'recurring' | 'settings';

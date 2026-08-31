@@ -14,6 +14,7 @@ import ExpensesPage from './components/ExpensesPage';
 import ExpenseForm from './components/ExpenseForm';
 import CategoriesPage from './components/CategoriesPage';
 import AccountsPage from './components/AccountsPage';
+import RecurringPage from './components/RecurringPage';
 import SettingsPage from './components/SettingsPage';
 
 const DEFAULT_CATEGORIES = [
@@ -38,6 +39,7 @@ const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
   add: { title: 'Add Expense', subtitle: 'Log a new transaction' },
   categories: { title: 'Categories', subtitle: 'Organize how spending is grouped' },
   accounts: { title: 'Accounts', subtitle: 'Manage payment methods' },
+  recurring: { title: 'Recurring', subtitle: 'Subscriptions and installment plans' },
   settings: { title: 'Settings', subtitle: 'Appearance, data, and account' },
 };
 
@@ -142,6 +144,13 @@ export default function App() {
     setData((d) => ({ ...d, recurringExpenses: d.recurringExpenses.map((r) => (r.id === updated.id ? updated : r)) }));
   }
 
+  function toggleRecurringMonthlyEquivalent(id: string, show: boolean) {
+    setData((d) => ({
+      ...d,
+      recurringExpenses: d.recurringExpenses.map((r) => (r.id === id ? { ...r, showMonthlyEquivalent: show } : r)),
+    }));
+  }
+
   function setSubtrackTarget(accountId: string | null) {
     setData((d) => ({ ...d, subtrackSync: { ...d.subtrackSync, targetAccountId: accountId } }));
   }
@@ -196,6 +205,15 @@ export default function App() {
           <div className={`absolute right-0 top-0 bottom-0 w-64 p-5 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
             <button onClick={() => setMobileMenuOpen(false)} className={`mb-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
               <X size={22} />
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('recurring');
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm ${isDarkMode ? 'text-slate-200 hover:bg-white/5' : 'text-slate-700 hover:bg-slate-100'}`}
+            >
+              Recurring
             </button>
             <button
               onClick={() => {
@@ -275,6 +293,17 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'recurring' && (
+          <RecurringPage
+            data={data}
+            isDarkMode={isDarkMode}
+            onEdit={editRecurringExpense}
+            onCancel={cancelRecurringExpense}
+            onDelete={deleteRecurringExpense}
+            onToggleMonthlyEquivalent={toggleRecurringMonthlyEquivalent}
+          />
+        )}
+
         {activeTab === 'settings' && (
           <SettingsPage
             data={data}
@@ -282,9 +311,6 @@ export default function App() {
             setIsDarkMode={setIsDarkMode}
             onImportExpenses={importExpenses}
             onClearAll={clearAll}
-            onCancelRecurring={cancelRecurringExpense}
-            onDeleteRecurring={deleteRecurringExpense}
-            onEditRecurring={editRecurringExpense}
             onSetSubtrackTarget={setSubtrackTarget}
             onSyncSubtrackNow={syncSubtrackNow}
           />
