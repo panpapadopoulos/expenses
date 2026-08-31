@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Menu, X, PlusCircle } from 'lucide-react';
-import { AppData, Expense, Tab } from './types';
+import { AppData, Expense, RecurringExpense, Tab } from './types';
 import { fetchData, saveData } from './services/dataService';
 import { uid } from './utils/format';
+import { generateDueExpenses } from './utils/recurring';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import Logo from './components/Logo';
@@ -38,7 +39,7 @@ const TAB_TITLES: Record<Tab, { title: string; subtitle: string }> = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const [data, setData] = useState<AppData>({ expenses: [], categories: [], accounts: [] });
+  const [data, setData] = useState<AppData>({ expenses: [], categories: [], accounts: [], recurringExpenses: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     try {
@@ -54,10 +55,11 @@ export default function App() {
   useEffect(() => {
     (async () => {
       const loaded = await fetchData();
-      if (loaded.categories.length === 0 && loaded.accounts.length === 0 && loaded.expenses.length === 0) {
-        setData({ expenses: [], categories: DEFAULT_CATEGORIES, accounts: DEFAULT_ACCOUNTS });
+      const normalized: AppData = { ...loaded, recurringExpenses: loaded.recurringExpenses || [] };
+      if (normalized.categories.length === 0 && normalized.accounts.length === 0 && normalized.expenses.length === 0) {
+        setData({ expenses: [], categories: DEFAULT_CATEGORIES, accounts: DEFAULT_ACCOUNTS, recurringExpenses: [] });
       } else {
-        setData(loaded);
+        setData(generateDueExpenses(normalized));
       }
       setIsLoading(false);
     })();
@@ -100,8 +102,24 @@ export default function App() {
     setData((d) => ({ ...d, expenses: [...d.expenses, ...imported] }));
   }
 
+  function addRecurringExpense(template: RecurringExpense) {
+    setData((d) => generateDueExpenses({ ...d, recurringExpenses: [...d.recurringExpenses, template] }));
+    setActiveTab('expenses');
+  }
+
+  function cancelRecurringExpense(id: string) {
+    setData((d) => ({
+      ...d,
+      recurringExpenses: d.recurringExpenses.map((r) => (r.id === id ? { ...r, active: false } : r)),
+    }));
+  }
+
+  function deleteRecurringExpense(id: string) {
+    setData((d) => ({ ...d, recurringExpenses: d.recurringExpenses.filter((r) => r.id !== id) }));
+  }
+
   function clearAll() {
-    setData({ expenses: [], categories: DEFAULT_CATEGORIES, accounts: DEFAULT_ACCOUNTS });
+    setData({ expenses: [], categories: DEFAULT_CATEGORIES, accounts: DEFAULT_ACCOUNTS, recurringExpenses: [] });
   }
 
   if (isLoading) {
@@ -190,7 +208,13 @@ export default function App() {
 
         {activeTab === 'add' && (
           <div className={`p-5 md:p-6 rounded-2xl border max-w-xl ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
-            <ExpenseForm categories={data.categories} accounts={data.accounts} isDarkMode={isDarkMode} onSave={addExpense} />
+            <ExpenseForm
+              categories={data.categories}
+              accounts={data.accounts}
+              isDarkMode={isDarkMode}
+              onSave={addExpense}
+              onSaveRecurring={addRecurringExpense}
+            />
           </div>
         )}
 
@@ -219,6 +243,8 @@ export default function App() {
             setIsDarkMode={setIsDarkMode}
             onImportExpenses={importExpenses}
             onClearAll={clearAll}
+            onCancelRecurring={cancelRecurringExpense}
+            onDeleteRecurring={deleteRecurringExpense}
           />
         )}
       </main>

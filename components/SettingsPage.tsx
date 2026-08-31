@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { Sun, Moon, Download, Upload, LogOut, AlertTriangle } from 'lucide-react';
+import { Sun, Moon, Download, Upload, LogOut, AlertTriangle, Repeat, X, Trash2 } from 'lucide-react';
 import { AppData, Expense } from '../types';
-import { uid } from '../utils/format';
+import { uid, formatCurrency, formatDate } from '../utils/format';
 import ConfirmDialog from './ConfirmDialog';
 
 interface Props {
@@ -10,6 +10,8 @@ interface Props {
   setIsDarkMode: (v: boolean) => void;
   onImportExpenses: (expenses: Expense[]) => void;
   onClearAll: () => void;
+  onCancelRecurring: (id: string) => void;
+  onDeleteRecurring: (id: string) => void;
 }
 
 function toCSV(data: AppData): string {
@@ -45,10 +47,22 @@ function parseCSV(text: string, data: AppData): Expense[] {
   return parsed;
 }
 
-export default function SettingsPage({ data, isDarkMode, setIsDarkMode, onImportExpenses, onClearAll }: Props) {
+export default function SettingsPage({
+  data,
+  isDarkMode,
+  setIsDarkMode,
+  onImportExpenses,
+  onClearAll,
+  onCancelRecurring,
+  onDeleteRecurring,
+}: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMessage, setImportMessage] = useState('');
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const [deletingRecurringId, setDeletingRecurringId] = useState<string | null>(null);
+
+  const categoryName = (id: string) => data.categories.find((c) => c.id === id)?.name || 'Uncategorized';
+  const generatedCount = (recurringId: string) => data.expenses.filter((e) => e.recurringId === recurringId).length;
 
   const cardClass = `p-5 md:p-6 rounded-2xl border transition-colors ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`;
 
@@ -123,6 +137,58 @@ export default function SettingsPage({ data, isDarkMode, setIsDarkMode, onImport
         </div>
       </div>
 
+      <div className={cardClass}>
+        <h3 className={`text-sm font-black uppercase tracking-widest mb-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+          Recurring Expenses
+        </h3>
+        {data.recurringExpenses.length === 0 ? (
+          <p className={`text-sm font-medium py-6 text-center ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+            No recurring expenses yet. Add one from the "Add Expense" page by checking "This repeats monthly".
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {data.recurringExpenses.map((r) => {
+              const count = generatedCount(r.id);
+              return (
+                <div
+                  key={r.id}
+                  className={`flex items-center gap-3 p-3 rounded-xl ${isDarkMode ? 'bg-slate-800/50' : 'bg-slate-50'}`}
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${r.active ? 'bg-emerald-500/15 text-emerald-500' : 'bg-slate-500/15 text-slate-500'}`}>
+                    <Repeat size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-bold truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{r.merchant}</p>
+                    <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                      {formatCurrency(r.amount)}/mo &middot; {categoryName(r.categoryId)} &middot; since {formatDate(r.startDate)}
+                    </p>
+                  </div>
+                  <span className={`text-xs font-black shrink-0 px-2.5 py-1 rounded-lg ${r.active ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600') : (isDarkMode ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500')}`}>
+                    {r.occurrences ? `${count} of ${r.occurrences}` : r.active ? 'Ongoing' : `${count} logged`}
+                  </span>
+                  {r.active && (
+                    <button
+                      onClick={() => onCancelRecurring(r.id)}
+                      title="Cancel (stop future payments, keep history)"
+                      className={`p-2 rounded-lg ${isDarkMode ? 'text-slate-400 hover:bg-white/10' : 'text-slate-500 hover:bg-slate-200'}`}
+                    >
+                      <X size={15} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setDeletingRecurringId(r.id)}
+                    title="Delete this recurring plan"
+                    className={`p-2 rounded-lg ${isDarkMode ? 'text-slate-400 hover:bg-red-500/10 hover:text-red-400' : 'text-slate-500 hover:bg-red-50 hover:text-red-500'}`}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <div className={`${cardClass} border-red-500/30`}>
         <h3 className="text-sm font-black uppercase tracking-widest mb-4 text-red-500 flex items-center gap-2">
           <AlertTriangle size={16} />
@@ -156,6 +222,19 @@ export default function SettingsPage({ data, isDarkMode, setIsDarkMode, onImport
             setConfirmingClear(false);
           }}
           onCancel={() => setConfirmingClear(false)}
+        />
+      )}
+
+      {deletingRecurringId && (
+        <ConfirmDialog
+          title="Delete recurring plan?"
+          message="This removes the recurring plan so no future payments are logged. Expenses already generated from it stay in your history."
+          isDarkMode={isDarkMode}
+          onConfirm={() => {
+            onDeleteRecurring(deletingRecurringId);
+            setDeletingRecurringId(null);
+          }}
+          onCancel={() => setDeletingRecurringId(null)}
         />
       )}
     </div>

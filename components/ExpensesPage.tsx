@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Search, ArrowUpDown, Pencil, Trash2, Receipt } from 'lucide-react';
+import { Search, ArrowUpDown, Pencil, Trash2, Receipt, Repeat } from 'lucide-react';
 import { AppData, Expense, SortField, SortOrder } from '../types';
 import { formatCurrency, formatDate } from '../utils/format';
 import ConfirmDialog from './ConfirmDialog';
@@ -175,7 +175,12 @@ export default function ExpensesPage({ data, isDarkMode, onUpdate, onDelete }: P
                       {formatDate(e.date)}
                     </td>
                     <td className="px-5 py-3.5">
-                      <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{e.merchant}</p>
+                      <p className={`font-bold flex items-center gap-1.5 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                        {e.merchant}
+                        {e.recurringId && (
+                          <Repeat size={12} className={isDarkMode ? 'text-slate-500' : 'text-slate-400'} title="Recurring expense" />
+                        )}
+                      </p>
                       {e.notes && <p className={`text-xs font-medium truncate max-w-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{e.notes}</p>}
                     </td>
                     <td className="px-5 py-3.5">

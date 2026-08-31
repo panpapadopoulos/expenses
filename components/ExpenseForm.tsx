@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Expense, Category, Account } from '../types';
+import { Repeat } from 'lucide-react';
+import { Expense, Category, Account, RecurringExpense } from '../types';
 import { todayISO, uid } from '../utils/format';
 
 interface Props {
@@ -8,16 +9,20 @@ interface Props {
   isDarkMode: boolean;
   editingExpense?: Expense;
   onSave: (expense: Expense) => void;
+  onSaveRecurring?: (template: RecurringExpense) => void;
   onCancel?: () => void;
 }
 
-export default function ExpenseForm({ categories, accounts, isDarkMode, editingExpense, onSave, onCancel }: Props) {
+export default function ExpenseForm({ categories, accounts, isDarkMode, editingExpense, onSave, onSaveRecurring, onCancel }: Props) {
   const [date, setDate] = useState(editingExpense?.date || todayISO());
   const [merchant, setMerchant] = useState(editingExpense?.merchant || '');
   const [amount, setAmount] = useState(editingExpense ? String(editingExpense.amount) : '');
   const [categoryId, setCategoryId] = useState(editingExpense?.categoryId || categories[0]?.id || '');
   const [accountId, setAccountId] = useState(editingExpense?.accountId || accounts[0]?.id || '');
   const [notes, setNotes] = useState(editingExpense?.notes || '');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [endType, setEndType] = useState<'never' | 'count'>('never');
+  const [occurrences, setOccurrences] = useState('4');
   const [error, setError] = useState('');
 
   const inputClass = `w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 font-bold transition-colors ${
@@ -35,21 +40,43 @@ export default function ExpenseForm({ categories, accounts, isDarkMode, editingE
     if (!categoryId) return setError('Choose a category.');
     if (!accountId) return setError('Choose a payment method.');
 
-    onSave({
-      id: editingExpense?.id || uid(),
-      date,
-      merchant: merchant.trim(),
-      amount: parsedAmount,
-      categoryId,
-      accountId,
-      notes: notes.trim() || undefined,
-    });
+    if (isRecurring && !editingExpense && onSaveRecurring) {
+      const parsedOccurrences = parseInt(occurrences, 10);
+      if (endType === 'count' && (isNaN(parsedOccurrences) || parsedOccurrences < 1)) {
+        return setError('Enter a valid number of payments.');
+      }
+      onSaveRecurring({
+        id: uid(),
+        merchant: merchant.trim(),
+        amount: parsedAmount,
+        categoryId,
+        accountId,
+        notes: notes.trim() || undefined,
+        frequency: 'monthly',
+        startDate: date,
+        occurrences: endType === 'count' ? parsedOccurrences : undefined,
+        active: true,
+      });
+    } else {
+      onSave({
+        id: editingExpense?.id || uid(),
+        date,
+        merchant: merchant.trim(),
+        amount: parsedAmount,
+        categoryId,
+        accountId,
+        notes: notes.trim() || undefined,
+      });
+    }
 
     if (!editingExpense) {
       setMerchant('');
       setAmount('');
       setNotes('');
       setDate(todayISO());
+      setIsRecurring(false);
+      setEndType('never');
+      setOccurrences('4');
     }
   }
 
@@ -126,6 +153,70 @@ export default function ExpenseForm({ categories, accounts, isDarkMode, editingE
           placeholder="Anything worth remembering about this expense"
         />
       </div>
+
+      {!editingExpense && onSaveRecurring && (
+        <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isRecurring}
+              onChange={(e) => setIsRecurring(e.target.checked)}
+              className="w-4 h-4 accent-emerald-500"
+            />
+            <span className={`flex items-center gap-2 font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+              <Repeat size={15} />
+              This repeats monthly
+            </span>
+          </label>
+          <p className={`text-xs font-medium mt-1.5 ml-7 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+            e.g. a Spotify subscription, or tuition split into installments
+          </p>
+
+          {isRecurring && (
+            <div className="mt-4 ml-7 space-y-3">
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={endType === 'never'}
+                    onChange={() => setEndType('never')}
+                    className="accent-emerald-500"
+                  />
+                  <span className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+                    Ongoing (no end date)
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={endType === 'count'}
+                    onChange={() => setEndType('count')}
+                    className="accent-emerald-500"
+                  />
+                  <span className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+                    Ends after
+                  </span>
+                </label>
+                {endType === 'count' && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={occurrences}
+                      onChange={(e) => setOccurrences(e.target.value)}
+                      className={`${inputClass} w-20 py-2`}
+                    />
+                    <span className={`text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>payments</span>
+                  </div>
+                )}
+              </div>
+              <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                First payment logged on the date above; future ones appear automatically once their month arrives. Manage or cancel anytime from Settings.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-3 pt-2">
         <button

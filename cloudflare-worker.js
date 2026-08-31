@@ -90,7 +90,7 @@ async function handleAPI(request, env, url) {
     if (url.pathname === '/api/data') {
         if (request.method === 'GET') {
             const data = await env.EXPENSES_DATA.get('user_data', 'json');
-            return new Response(JSON.stringify(data || { expenses: [], categories: [], accounts: [] }), {
+            return new Response(JSON.stringify(data || { expenses: [], categories: [], accounts: [], recurringExpenses: [] }), {
                 headers: { 'Content-Type': 'application/json' }
             });
         }
